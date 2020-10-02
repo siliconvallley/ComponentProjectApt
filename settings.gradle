@@ -1,0 +1,8 @@
+include ':annotation_api'
+include ':annotation_processor'
+include ':annotation'
+include ':common_library'
+include ':order'
+include ':personal'
+include ':app'
+rootProject.name = "ComponentProjectApt"

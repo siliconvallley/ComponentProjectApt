@@ -1,0 +1,67 @@
+apply plugin: 'com.android.application'
+
+def androidId = rootProject.ext.androidId
+def appId = rootProject.ext.appId
+def supportLibrary = rootProject.ext.dependencies
+def url = rootProject.ext.url
+
+android {
+    compileSdkVersion androidId.compileSdkVersion
+    buildToolsVersion androidId.buildToolsVersion
+
+    defaultConfig {
+        applicationId appId.app
+        minSdkVersion androidId.minSdkVersion
+        targetSdkVersion androidId.targetSdkVersion
+        versionCode androidId.versionCode
+        versionName androidId.versionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // 这个方法接收三个非空的参数，第一个：确定值的类型，第二个：指定key的名字，第三个：传值（必须是String）
+        // 为什么需要定义这个？因为src代码中有可能需要用到跨模块交互，如果是组件化模块显然不行
+        // 切记：不能在android根节点，只能在defaultConfig或buildTypes节点下
+        buildConfigField("boolean", "isRelease", String.valueOf(isRelease))
+
+        // 在gradle文件中配置选项参数值（用于APT传参接收）
+        // 切记：必须写在defaultConfig节点下
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = [moduleName: project.getName(), packageNameForAPT: packageNameForAPT]
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("String", "debugUrl", "\"${url.debug}\"")
+        }
+        release {
+            buildConfigField("String", "releaseUrl", "\"${url.release}\"")
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
+    // 导入公共库
+    implementation project(':common_library')
+    // 注解
+    implementation project(':annotation')
+    // 注解处理器
+    annotationProcessor project(':annotation_processor')
+
+    // 循环引入第三方库
+    supportLibrary.each { k, v -> implementation v }
+
+    // 如果是集成化模式，做发布版本时。各个模块都不能独立运行了
+    if (isRelease) {
+        implementation project(":order")
+        implementation project(":personal")
+    }
+}
